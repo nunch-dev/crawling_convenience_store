@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  mysql:
+    image: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 1q2w3e4r!!
+      MYSQL_DATABASE: cs
+      MYSQL_USER: cs-user
+      MYSQL_PASSWORD: 1q2w3e4r!!
+    volumes:
+      - ./volume:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
