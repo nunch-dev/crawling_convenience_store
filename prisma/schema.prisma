@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model CrawlingGS {
+  // common field
+  id           Int     @id @default(autoincrement())
+  name         String  @db.VarChar(255)
+  price        Int     @db.Int
+  img          String  @db.VarChar(255)
+  barcode      String  @unique(map: "barcode") @db.VarChar(255)
+  event_type   String  @db.VarChar(255)
+  // specific field
+  gift_name    String? @db.VarChar(255)
+  gift_price   Int?    @db.Int
+  gift_img     String? @db.Text
+  gift_barcode String? @db.VarChar(255)
+}
+
+model CrawlingCU {
+  // common field
+  id          Int     @id @default(autoincrement())
+  name        String  @db.VarChar(255)
+  price       Int     @db.Int
+  img         String  @db.VarChar(255)
+  barcode     String  @unique(map: "barcode") @db.VarChar(255)
+  event_type  String  @db.VarChar(255)
+  // specific field
+  description String? @db.Text
+  tag         String? @db.VarChar(255)
+}
+
+model CrawlingSeven {
+  // common field
+  id             Int     @id @default(autoincrement())
+  name           String  @db.VarChar(255)
+  price          Int     @db.Int
+  img            String  @db.VarChar(255)
+  barcode        String  @unique(map: "barcode") @db.VarChar(255)
+  event_type     String  @db.VarChar(255)
+  // specific field
+  gift_name      String? @db.VarChar(255)
+  gift_price     Int?    @db.Int
+  gift_img       String? @db.Text
+  gift_barcode   String? @db.VarChar(255)
+  description    String? @db.Text
+  original_price Int?    @db.Int
+}
