@@ -1,5 +1,6 @@
 import { GS } from './lib/GS';
+import { Crawler } from './lib/crawler';
 
-const gsCrawling = new GS();
+const gs = new Crawler(new GS());
 
-gsCrawling.run();
+gs.start();

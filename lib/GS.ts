@@ -1,9 +1,9 @@
-import { Crawler } from './crawler';
 import { ConvenienceType } from '../interfaces/types';
 import { chromium, Page } from '@playwright/test';
 import * as fs from 'fs';
+import { Crawlable } from './crawlable';
 
-export class GS extends Crawler {
+export class GS extends Crawlable {
   // 이벤트 상품
   private readonly eventGoodsURL =
     'http://gs25.gsretail.com/gscvs/ko/products/event-goods';
@@ -17,7 +17,8 @@ export class GS extends Crawler {
     'http://gs25.gsretail.com/gscvs/ko/products/youus-different-service';
 
   constructor() {
-    super(ConvenienceType.GS);
+    super();
+    this.target = ConvenienceType.GS;
   }
 
   async init() {

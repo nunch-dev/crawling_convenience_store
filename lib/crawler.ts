@@ -1,13 +1,12 @@
-import { ConvenienceType } from '../interfaces/types';
-import { Browser } from '@playwright/test';
+import { Crawlable } from './crawlable';
 
-export abstract class Crawler {
-  private target: ConvenienceType;
-  protected browser: Browser;
-
-  protected constructor(target: ConvenienceType) {
-    this.target = target;
+export class Crawler {
+  private crawler: Crawlable;
+  constructor(crawler: Crawlable) {
+    this.crawler = crawler;
   }
 
-  abstract run(): Promise<void>;
+  start() {
+    this.crawler.run();
+  }
 }
