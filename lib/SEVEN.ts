@@ -1,12 +1,12 @@
-import { Crawler } from './crawler';
-import { ConvenienceType } from '../interfaces/types';
+import { Crawlable } from './crawlable';
+import { CrawlingSeven } from '@prisma/client';
 
-class SEVEN extends Crawler {
+export class SEVEN extends Crawlable<CrawlingSeven> {
   constructor() {
-    super(ConvenienceType.SEVEN);
+    super();
   }
 
   async run() {
-    console.log('SEVEN run');
+    return [] as any;
   }
 }

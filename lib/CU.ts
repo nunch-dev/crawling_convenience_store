@@ -1,12 +1,12 @@
-import { Crawler } from './crawler';
-import { ConvenienceType } from '../interfaces/types';
+import { Crawlable } from './crawlable';
+import { CrawlingCU } from '@prisma/client';
 
-class CU extends Crawler {
+export class CU extends Crawlable<CrawlingCU> {
   constructor() {
-    super(ConvenienceType.CU);
+    super();
   }
 
   async run() {
-    console.log('CU run');
+    return [] as any;
   }
 }
