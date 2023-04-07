@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 class PrismaDB {
   private static instance: PrismaDB;
-  private prisma: PrismaClient;
+  private readonly prisma: PrismaClient;
 
   private constructor() {
     this.prisma = new PrismaClient();
@@ -14,6 +14,10 @@ class PrismaDB {
     }
 
     return PrismaDB.instance;
+  }
+
+  getClient() {
+    return this.prisma;
   }
 }
 
