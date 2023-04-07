@@ -9,45 +9,75 @@ datasource db {
 
 model CrawlingGS {
   // common field
-  id           Int     @id @default(autoincrement())
-  name         String  @db.VarChar(255)
-  price        Int     @db.Int
-  img          String  @db.VarChar(255)
-  barcode      String  @unique(map: "barcode") @db.VarChar(255)
-  event_type   String  @db.VarChar(255)
+  id          Int       @id @default(autoincrement())
+  /// 상품 바코드
+  barcode     String    @unique(map: "barcode") @db.VarChar(255)
+  /// 상품명
+  name        String    @db.VarChar(255)
+  /// 상품 가격
+  price       Int       @db.Int
+  /// 상품 이미지
+  img         String    @db.VarChar(255)
+  /// 이벤트 타입
+  eventType   String    @db.VarChar(255)
   // specific field
-  gift_name    String? @db.VarChar(255)
-  gift_price   Int?    @db.Int
-  gift_img     String? @db.Text
-  gift_barcode String? @db.VarChar(255)
+  /// 덤증정 상품명
+  giftName    String?   @db.VarChar(255)
+  /// 덤증정 상품 가격
+  giftPrice   Int?      @db.Int
+  /// 덤증정 상품 이미지
+  giftImg     String?   @db.Text
+  /// 덤증정 상품 바코드
+  giftBarcode String?   @db.VarChar(255)
+  createdAt   DateTime? @default(now())
 }
 
 model CrawlingCU {
   // common field
-  id          Int     @id @default(autoincrement())
-  name        String  @db.VarChar(255)
-  price       Int     @db.Int
-  img         String  @db.VarChar(255)
-  barcode     String  @unique(map: "barcode") @db.VarChar(255)
-  event_type  String  @db.VarChar(255)
+  id          Int       @id @default(autoincrement())
+  /// 상품 바코드
+  barcode     String    @unique(map: "barcode") @db.VarChar(255)
+  /// 상품명
+  name        String    @db.VarChar(255)
+  /// 상품 가격
+  price       Int       @db.Int
+  /// 상품 이미지
+  img         String    @db.VarChar(255)
+  /// 이벤트 타입
+  eventType   String    @db.VarChar(255)
   // specific field
-  description String? @db.Text
-  tag         String? @db.VarChar(255)
+  /// 상품 설명
+  description String?   @db.Text
+  /// 상품 태그
+  tag         String?   @db.VarChar(255)
+  createdAt   DateTime? @default(now())
 }
 
 model CrawlingSeven {
   // common field
-  id             Int     @id @default(autoincrement())
-  name           String  @db.VarChar(255)
-  price          Int     @db.Int
-  img            String  @db.VarChar(255)
-  barcode        String  @unique(map: "barcode") @db.VarChar(255)
-  event_type     String  @db.VarChar(255)
+  id            Int       @id @default(autoincrement())
+  /// 상품 바코드
+  barcode       String    @unique(map: "barcode") @db.VarChar(255)
+  /// 상품명
+  name          String    @db.VarChar(255)
+  /// 상품 가격
+  price         Int       @db.Int
+  /// 상품 이미지
+  img           String    @db.VarChar(255)
+  /// 이벤트 타입
+  eventType     String    @db.VarChar(255)
   // specific field
-  gift_name      String? @db.VarChar(255)
-  gift_price     Int?    @db.Int
-  gift_img       String? @db.Text
-  gift_barcode   String? @db.VarChar(255)
-  description    String? @db.Text
-  original_price Int?    @db.Int
+  /// 덤증정 상품명
+  giftName      String?   @db.VarChar(255)
+  /// 덤증정 상품 가격
+  giftPrice     Int?      @db.Int
+  /// 덤증정 상품 이미지
+  giftImg       String?   @db.Text
+  /// 덤증정 상품 바코드
+  giftBarcode   String?   @db.VarChar(255)
+  /// 상품명
+  description   String?   @db.Text
+  /// 상품 할인 전 가격
+  originalPrice Int?      @db.Int
+  createdAt     DateTime? @default(now())
 }
