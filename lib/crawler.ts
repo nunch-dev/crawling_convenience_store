@@ -1,12 +1,12 @@
 import { Crawlable } from './crawlable';
 
-export class Crawler {
-  private crawler: Crawlable;
-  constructor(crawler: Crawlable) {
+export class Crawler<T> {
+  private crawler: Crawlable<T>;
+  constructor(crawler: Crawlable<T>) {
     this.crawler = crawler;
   }
 
-  start() {
-    this.crawler.run();
+  async start() {
+    return await this.crawler.run();
   }
 }

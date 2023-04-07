@@ -1,9 +1,7 @@
 import { Browser } from '@playwright/test';
-import { ConvenienceType } from '../interfaces/types';
 
-export abstract class Crawlable {
+export abstract class Crawlable<T> {
   browser: Browser;
-  target: ConvenienceType;
 
-  abstract run(): Promise<void>;
+  abstract run(): Promise<T[]>;
 }
