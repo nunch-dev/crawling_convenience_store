@@ -45,6 +45,8 @@ model CrawlingCU {
   img         String    @db.VarChar(255)
   /// 이벤트 타입
   eventType   String    @db.VarChar(255)
+  // /신상품 여부
+  isNew       Boolean?  @db.TinyInt
   // specific field
   /// 상품 설명
   description String?   @db.Text
