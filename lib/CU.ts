@@ -1,7 +1,10 @@
 import { Crawlable } from './crawlable';
 import { Prisma } from '@prisma/client';
 import { chromium, Locator, Page } from '@playwright/test';
-import * as fs from 'fs';
+import { BadgeType } from '.prisma/client';
+
+// 이벤트 상품만 크롤링 하는 경우 new / best 등의 상품 태그를 가져올 수 없어
+// 상품 전체 페이지를 호출하고, 이벤트 상품만 필터링하는 방식으로 크롤링
 
 export class CU extends Crawlable<Prisma.CrawlingCUCreateManyInput> {
   // Product 리스트 URL
@@ -9,7 +12,15 @@ export class CU extends Crawlable<Prisma.CrawlingCUCreateManyInput> {
     'https://cu.bgfretail.com/product/product.do?category=product&depth2=4&depth3=';
 
   // 1: 간편식사, 2: 즉석조리, 3: 과자류, 4: 아이스크림, 5: 식품, 6: 음료, 7: 생활용품
-  private readonly types = ['1', '2', '3', '4', '5', '6', '7'];
+  private readonly types = [
+    '간편식사',
+    '즉석조리',
+    '과자류',
+    '아이스크림',
+    '식품',
+    '음료',
+    '생활용품',
+  ];
 
   // 상세 화면 URL
   private readonly detailURL =
@@ -27,19 +38,21 @@ export class CU extends Crawlable<Prisma.CrawlingCUCreateManyInput> {
     await this.init();
     const result: Prisma.CrawlingCUCreateManyInput[] = [];
 
-    for (let i = 0; i < this.types.length; i++) {
-      const data = await this.crawling(this.types[i]);
+    for (let i = 1; i <= this.types.length; i++) {
+      console.log(`CU ${this.types[i - 1]} 크롤링 시작`);
+      const data = await this.crawling(i);
+      console.log(`CU ${this.types[i - 1]} 크롤링 종료`);
       result.push(...data);
     }
 
     await this.browser.close();
-    fs.writeFileSync('cu.json', JSON.stringify(result));
 
     return result;
   }
 
-  private async crawling(pageType: string) {
+  private async crawling(pageType: number) {
     const context = await this.browser.newContext();
+    context.setDefaultTimeout(3000);
     const page = await context.newPage();
 
     await page.goto(this.baseURL + pageType);
@@ -57,6 +70,7 @@ export class CU extends Crawlable<Prisma.CrawlingCUCreateManyInput> {
   }
 
   private async callAllPages(page: Page) {
+    console.log('전체 페이지 호출 중 ...');
     while (true) {
       try {
         const nextButton = await page
@@ -68,19 +82,35 @@ export class CU extends Crawlable<Prisma.CrawlingCUCreateManyInput> {
         break;
       }
     }
+    console.log('전체 페이지 호출 완료');
   }
 
   private async crawlItems(page: Page) {
     const items = await page.locator('.prod_list').all();
     const arr: Prisma.CrawlingCUCreateManyInput[] = [];
     if (!items) return arr;
-    console.log(items.length);
+    console.log('전체 상품 갯수', items.length);
 
     for (const item of items) {
       // 1+1 or 2+1
-      const eventType = await item.locator('.badge').innerText();
-      // 이벤트가 없는 항목은 스킵
-      if (!eventType) continue;
+      const eventType = await item
+        .locator('.badge')
+        .innerText({ timeout: 100 });
+      let badge: BadgeType;
+      try {
+        badge =
+          ((await item
+            .locator('.tag')
+            .locator('span')
+            .getAttribute('class', { timeout: 100 })) as
+            | BadgeType
+            | undefined) || BadgeType.NONE;
+      } catch (e) {
+        badge = BadgeType.NONE;
+      }
+
+      // 이벤트나 뱃지가 없는 항목은 스킵
+      if (!eventType && (!badge || badge === BadgeType.NONE)) continue;
 
       const name = await item
         .locator('.prod_text')
@@ -106,12 +136,14 @@ export class CU extends Crawlable<Prisma.CrawlingCUCreateManyInput> {
         img,
         barcode,
         eventType,
+        badge,
         ...details,
       };
 
       arr.push(obj);
     }
 
+    console.log('유효 이벤트 상품 갯수', arr.length);
     return arr;
   }
 
@@ -130,7 +162,7 @@ export class CU extends Crawlable<Prisma.CrawlingCUCreateManyInput> {
 
     const description = await page.locator('.prodExplain').innerText();
     let tag = await page.locator('#taglist').innerText();
-    tag = tag.replace(/\\n/g, '|');
+    tag = tag.replace(/\n/g, '|');
 
     await page.close();
 
