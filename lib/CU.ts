@@ -65,8 +65,7 @@ export class CU extends Crawlable<Prisma.CrawlingCUCreateManyInput> {
     );
 
     await this.callAllPages(page);
-    const data = await this.crawlItems(page);
-    return data;
+    return await this.crawlItems(page);
   }
 
   private async callAllPages(page: Page) {
