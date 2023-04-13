@@ -81,7 +81,7 @@ export class GS extends Crawlable<Prisma.CrawlingGSCreateManyInput> {
 
     console.log('PB 상품 크롤링 시작');
     const arr = await this.crawling(page);
-    console.log('PB상품 크롤링 종료');
+    console.log('PB 상품 크롤링 종료');
     return arr;
   }
 
