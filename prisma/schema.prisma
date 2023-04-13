@@ -8,23 +8,21 @@ datasource db {
 }
 
 model CrawlingGS {
-  // common field
   id          Int       @id @default(autoincrement())
   /// 상품 바코드
   barcode     String    @unique(map: "barcode") @db.VarChar(255)
   /// 상품명
   name        String    @db.VarChar(255)
   /// 상품 가격
-  price       Int       @db.Int
+  price       Int
   /// 상품 이미지
   img         String    @db.VarChar(255)
   /// 이벤트 타입
   eventType   String    @db.VarChar(255)
-  // specific field
   /// 덤증정 상품명
   giftName    String?   @db.VarChar(255)
   /// 덤증정 상품 가격
-  giftPrice   Int?      @db.Int
+  giftPrice   Int?
   /// 덤증정 상품 이미지
   giftImg     String?   @db.Text
   /// 덤증정 상품 바코드
@@ -33,53 +31,55 @@ model CrawlingGS {
 }
 
 model CrawlingCU {
-  // common field
   id          Int       @id @default(autoincrement())
-  /// 상품 바코드
-  barcode     String    @unique(map: "barcode") @db.VarChar(255)
   /// 상품명
   name        String    @db.VarChar(255)
   /// 상품 가격
-  price       Int       @db.Int
+  price       Int
   /// 상품 이미지
   img         String    @db.VarChar(255)
-  /// 이벤트 타입
-  eventType   String    @db.VarChar(255)
-  // /신상품 여부
-  isNew       Boolean?  @db.TinyInt
-  // specific field
+  /// 상품 바코드
+  barcode     String    @unique(map: "barcode") @db.VarChar(255)
   /// 상품 설명
   description String?   @db.Text
   /// 상품 태그
   tag         String?   @db.VarChar(255)
   createdAt   DateTime? @default(now())
+  /// 이벤트 타입
+  eventType   String    @db.VarChar(255)
+  /// 뱃지
+  badge       BadgeType @default(NONE)
 }
 
 model CrawlingSeven {
-  // common field
   id            Int       @id @default(autoincrement())
-  /// 상품 바코드
-  barcode       String    @unique(map: "barcode") @db.VarChar(255)
   /// 상품명
   name          String    @db.VarChar(255)
   /// 상품 가격
-  price         Int       @db.Int
+  price         Int
   /// 상품 이미지
   img           String    @db.VarChar(255)
+  /// 상품 바코드
+  barcode       String    @unique(map: "barcode") @db.VarChar(255)
+  /// 상품명
+  description   String?   @db.Text
+  createdAt     DateTime? @default(now())
   /// 이벤트 타입
   eventType     String    @db.VarChar(255)
-  // specific field
+  /// 덤증정 상품 바코드
+  giftBarcode   String?   @db.VarChar(255)
+  /// 덤증정 상품 이미지
+  giftImg       String?   @db.Text
   /// 덤증정 상품명
   giftName      String?   @db.VarChar(255)
   /// 덤증정 상품 가격
-  giftPrice     Int?      @db.Int
-  /// 덤증정 상품 이미지
-  giftImg       String?   @db.Text
-  /// 덤증정 상품 바코드
-  giftBarcode   String?   @db.VarChar(255)
-  /// 상품명
-  description   String?   @db.Text
+  giftPrice     Int?
   /// 상품 할인 전 가격
-  originalPrice Int?      @db.Int
-  createdAt     DateTime? @default(now())
+  originalPrice Int?
+}
+
+enum BadgeType {
+  NONE
+  NEW
+  BEST
 }
