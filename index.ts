@@ -7,7 +7,7 @@ const db = Database.getClient();
 const gs = new Crawler(new GS());
 const cu = new Crawler(new CU());
 
-async function runCrawlers() {
+async function crawlingGS() {
   const GSData = await gs.start();
   const { count } = await db.crawlingGS.createMany({
     data: GSData,
@@ -21,10 +21,16 @@ async function runCrawlers() {
 
 // runCrawlers();
 
-async function start() {
-  console.time('CU');
-  await cu.start();
-  console.timeEnd('CU');
+async function crawlingCU() {
+  const CUData = await cu.start();
+  const { count } = await db.crawlingCU.createMany({
+    data: CUData,
+    skipDuplicates: true,
+  });
+
+  console.log(`Create Many Result: `, count);
+
+  await db.$disconnect();
 }
 
-start();
+crawlingCU();
