@@ -25,9 +25,9 @@ export class GS extends Crawlable<Prisma.CrawlingGSCreateManyInput> {
 
   async run() {
     await this.init();
-    const freshFood = await this.crawlFreshFood();
-    const PBs = await this.crawlPB();
-    const eventGoods = await this.crawlEventGoods();
+    const freshFood = await this.crawlFreshFood('신선식품');
+    const PBs = await this.crawlPB('PB상품');
+    const eventGoods = await this.crawlEventGoods('이벤트상품');
     await this.browser.close();
 
     return [...eventGoods, ...freshFood, ...PBs];
@@ -42,7 +42,7 @@ export class GS extends Crawlable<Prisma.CrawlingGSCreateManyInput> {
     return Number(lastPageIndex) || 1;
   }
 
-  private async crawlEventGoods() {
+  private async crawlEventGoods(category: string) {
     const context = await this.browser.newContext();
     const page = await context.newPage();
 
@@ -54,12 +54,13 @@ export class GS extends Crawlable<Prisma.CrawlingGSCreateManyInput> {
     await page.waitForTimeout(3000);
 
     console.log('이벤트 상품 크롤링 시작');
-    const arr = await this.crawling(page);
+    const arr = await this.crawling(page, category);
     console.log('이벤트 상품 크롤링 종료');
+    await context.close();
     return arr;
   }
 
-  private async crawlFreshFood() {
+  private async crawlFreshFood(category: string) {
     const context = await this.browser.newContext();
     const page = await context.newPage();
 
@@ -67,12 +68,13 @@ export class GS extends Crawlable<Prisma.CrawlingGSCreateManyInput> {
     await page.waitForLoadState('networkidle');
 
     console.log('신선식품 크롤링 시작');
-    const arr = await this.crawling(page);
+    const arr = await this.crawling(page, category);
     console.log('신선식품 크롤링 종료');
+    await context.close();
     return arr;
   }
 
-  private async crawlPB() {
+  private async crawlPB(category: string) {
     const context = await this.browser.newContext();
     const page = await context.newPage();
 
@@ -80,18 +82,19 @@ export class GS extends Crawlable<Prisma.CrawlingGSCreateManyInput> {
     await page.waitForLoadState('networkidle');
 
     console.log('PB 상품 크롤링 시작');
-    const arr = await this.crawling(page);
+    const arr = await this.crawling(page, category);
     console.log('PB 상품 크롤링 종료');
+    await context.close();
     return arr;
   }
 
-  private async crawling(page: Page) {
+  private async crawling(page: Page, category: string) {
     const lastPageIndex = await this.getLastPageIndex(page);
 
     let arr: Prisma.CrawlingGSCreateManyInput[] = [];
     for (let i = 0; i < lastPageIndex; i++) {
       console.log(`현재 진행중인 페이지: ${i + 1}`);
-      arr = arr.concat(await this.crawlItems(page));
+      arr = arr.concat(await this.crawlItems(page, category));
 
       const nextBtns = await page.locator('a.next').all();
       const nextBtn = nextBtns.at(-1);
@@ -108,7 +111,7 @@ export class GS extends Crawlable<Prisma.CrawlingGSCreateManyInput> {
     return arr;
   }
 
-  private async crawlItems(page: Page) {
+  private async crawlItems(page: Page, category: string) {
     const list = await page.locator('.prod_list').all();
     const items = await list.at(-1)?.locator('li').all();
     const arr: Prisma.CrawlingGSCreateManyInput[] = [];
@@ -142,6 +145,8 @@ export class GS extends Crawlable<Prisma.CrawlingGSCreateManyInput> {
         giftImg: null,
         giftBarcode: null,
       };
+
+      const isNew = eventType.toUpperCase() === 'NEW';
 
       if (eventType === '덤증정') {
         const gift = await item.locator('.dum_box');
@@ -185,6 +190,8 @@ export class GS extends Crawlable<Prisma.CrawlingGSCreateManyInput> {
         img,
         barcode,
         eventType,
+        isNew,
+        category,
         ...giftObject,
       };
 
