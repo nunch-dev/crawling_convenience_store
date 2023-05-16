@@ -1,10 +1,10 @@
 import { Command } from 'commander';
-import { isEmptyObject } from '../src/util';
-import { Crawler } from '../src/crawler';
-import { GS } from '../src/GS';
-import { CU } from '../src/CU';
-import { SEVEN } from '../src/SEVEN';
-import { Database } from '../src/database';
+import { Database } from './src/database';
+import { isEmptyObject } from './src/util';
+import { Crawler } from './src/crawler';
+import { GS } from './src/GS';
+import { SEVEN } from './src/SEVEN';
+import { CU } from './src/CU';
 
 interface CliOptions {
   gs?: boolean;
