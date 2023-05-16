@@ -55,13 +55,9 @@ export class CU extends Crawlable<Prisma.CrawlingCUCreateManyInput> {
     const page = await context.newPage();
 
     await page.goto(this.baseURL + pageType);
-    await page.waitForFunction(
-      () => !document.querySelector('.AjaxLoading')?.checkVisibility()
-    );
+    await page.waitForSelector('AjaxLoading', { state: 'hidden' });
     await page.click('#setC');
-    await page.waitForFunction(
-      () => !document.querySelector('.AjaxLoading')?.checkVisibility()
-    );
+    await page.waitForSelector('AjaxLoading', { state: 'hidden' });
 
     await this.callAllPages(page);
     const result = await this.crawlItems(page, category);
