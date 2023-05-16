@@ -1,10 +1,10 @@
-#!/usr/bin/env node
 import { Command } from 'commander';
-import { isEmptyObject, upsert } from '../src/util';
+import { isEmptyObject } from '../src/util';
 import { Crawler } from '../src/crawler';
 import { GS } from '../src/GS';
 import { CU } from '../src/CU';
 import { SEVEN } from '../src/SEVEN';
+import { Database } from '../src/database';
 
 interface CliOptions {
   gs?: boolean;
@@ -13,6 +13,7 @@ interface CliOptions {
 }
 
 const main = async () => {
+  const db = Database.getClient();
   const program = new Command();
   program
     .description('편의점 크롤링 스크립트')
@@ -26,23 +27,26 @@ const main = async () => {
 
   if (isEmptyObject(options)) {
     program.help();
-    process.exit(1);
+    return;
   }
 
   if (options.gs) {
-    console.log('gs');
-    new Crawler(new GS()).start().then(upsert);
+    console.log('GS 크롤링 호출');
+    const data = await new Crawler(new GS()).start();
+    await db.crawlingGS.createMany({ data, skipDuplicates: false });
   }
 
   if (options.cu) {
-    console.log('cu');
-    new Crawler(new CU()).start().then(upsert);
+    console.log('CU 크롤링 호출');
+    const data = await new Crawler(new CU()).start();
+    await db.crawlingCU.createMany({ data, skipDuplicates: false });
   }
 
   if (options.seven) {
-    console.log('seven');
-    new Crawler(new SEVEN()).start().then(upsert);
+    console.log('세븐일레븐 크롤링 호출');
+    const data = await new Crawler(new SEVEN()).start();
+    await db.crawlingSeven.createMany({ data, skipDuplicates: false });
   }
 };
 
-main();
+main().catch(console.error);
