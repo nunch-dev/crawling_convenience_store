@@ -1,178 +1,131 @@
 import { Crawlable } from './crawlable';
-import { Prisma } from '@prisma/client';
-import { chromium, Page } from '@playwright/test';
-import { BadgeType } from '.prisma/client';
+import axios from 'axios';
+import { load } from 'cheerio';
 
-// 이벤트 상품만 크롤링 하는 경우 new / best 등의 상품 태그를 가져올 수 없어
-// 상품 전체 페이지를 호출하고, 이벤트 상품만 필터링하는 방식으로 크롤링
+interface CUGoods {
+  barcode: string;
+  name: string;
+  price: number;
+  img: string;
+  eventType: string | null;
+  isNew: boolean;
+  badge: string;
+  category: string;
+  description: string | null;
+  tag: string | null;
+  createdAt?: Date;
+}
 
-export class CU extends Crawlable<Prisma.CrawlingCUCreateManyInput> {
-  // Product 리스트 URL
-  private readonly baseURL =
-    'https://cu.bgfretail.com/product/product.do?category=product&depth2=4&depth3=';
-
-  // 1: 간편식사, 2: 즉석조리, 3: 과자류, 4: 아이스크림, 5: 식품, 6: 음료, 7: 생활용품
-  private readonly types = [
-    '간편식사',
-    '즉석조리',
-    '과자류',
-    '아이스크림',
-    '식품',
-    '음료',
-    '생활용품',
-  ];
-
-  // 상세 화면 URL
+export class CU extends Crawlable<CUGoods> {
+  private readonly listURL = 'https://cu.bgfretail.com/product/productAjax.do';
   private readonly detailURL =
     'https://cu.bgfretail.com/product/view.do?category=product&gdIdx=';
 
-  constructor() {
-    super();
-  }
-
-  async init() {
-    this.browser = await chromium.launch({ headless: true });
-  }
+  private readonly category = {
+    10: '간편식사',
+    20: '즉석조리',
+    30: '과자류',
+    40: '아이스크림',
+    50: '식품',
+    60: '음료',
+    70: '생활용품',
+  };
 
   async run() {
-    await this.init();
-    const result: Prisma.CrawlingCUCreateManyInput[] = [];
+    return await this.scrapeList();
+  }
 
-    for (let i = 1; i <= this.types.length; i++) {
-      console.log(`CU ${this.types[i - 1]} 크롤링 시작`);
-      const data = await this.crawling(i, this.types[i - 1]);
-      console.log(`CU ${this.types[i - 1]} 크롤링 종료`);
-      result.push(...data);
+  private async scrapeList() {
+    const entries = Object.entries(this.category);
+    const result: CUGoods[] = [];
+    for (let i = 0; i < entries.length; i++) {
+      const items = await this.scrapeType(entries[i]);
+      result.push(...items);
     }
 
-    await this.browser.close();
-
     return result;
   }
 
-  private async crawling(pageType: number, category: string) {
-    const context = await this.browser.newContext();
-    const page = await context.newPage();
+  private async scrapeType([categoryCode, category]: [string, string]) {
+    let pageIndex = 1;
+    const result: CUGoods[] = [];
 
-    await page.goto(this.baseURL + pageType);
-    await page.waitForSelector('AjaxLoading', { state: 'hidden' });
-    await page.click('#setC');
-    await page.waitForSelector('AjaxLoading', { state: 'hidden' });
-
-    await this.callAllPages(page);
-    const result = await this.crawlItems(page, category);
-    await context.close();
-    return result;
-  }
-
-  private async callAllPages(page: Page) {
-    console.log('전체 페이지 호출 중 ...');
     while (true) {
-      try {
-        const nextButton = await page
-          .locator('.prodListBtn')
-          .locator('.prodListBtn-w')
-          .locator('a');
-        await nextButton.click();
-      } catch (e) {
-        break;
-      }
-    }
-    console.log('전체 페이지 호출 완료');
-  }
+      console.log(`${category} 상품 ${pageIndex} 페이지 크롤링 중`);
+      const html = await axios.get(this.listURL, {
+        params: {
+          pageIndex,
+          searchMainCategory: categoryCode,
+          searchSubCategory: '',
+          listType: pageIndex === 1 ? 0 : '',
+          searchCondition: pageIndex === 1 ? '' : 'setA',
+          searchUseYn: '',
+          gdIdx: 0,
+          codeParent: categoryCode,
+          user_id: '',
+          search1: '',
+          search2: '',
+          searchKeyword: '',
+        },
+      });
 
-  private async crawlItems(page: Page, category: string) {
-    const items = await page.locator('.prod_list').all();
-    const arr: Prisma.CrawlingCUCreateManyInput[] = [];
-    if (!items) return arr;
-    console.log('전체 상품 갯수', items.length);
+      const $ = load(html.data);
+      const $list = $('.prodListWrap ul');
+      const $items = $list.find('li.prod_list');
 
-    for (const item of items) {
-      // 1+1 or 2+1
-      const eventType = await item
-        .locator('.badge')
-        .innerText({ timeout: 100 });
-      let badge: BadgeType;
-      try {
-        badge =
-          ((await item
-            .locator('.tag')
-            .locator('span')
-            .getAttribute('class', { timeout: 100 })) as
-            | BadgeType
-            | undefined) || BadgeType.NONE;
-      } catch (e) {
-        badge = BadgeType.NONE;
-      }
-      badge = badge.toUpperCase() as BadgeType;
+      for (const el of $items.toArray()) {
+        const $item = $(el);
+        const eventType = $item.find('.badge').text().trim() || null;
+        const badge =
+          $item.find('.tag span').attr('class')?.trim().toUpperCase() || 'NONE';
 
-      // 이벤트나 뱃지가 없는 항목은 스킵
-      if (!eventType && (!badge || badge === BadgeType.NONE)) continue;
+        if (badge === 'NONE' && !eventType) continue;
 
-      const name = await item
-        .locator('.prod_text')
-        .locator('.name')
-        .innerText();
-      let priceString = await item
-        .locator('.prod_text')
-        .locator('.price')
-        .innerText();
-      priceString = priceString.replace(/[,원]/g, '');
-      const price = Number(priceString);
-      const $img = await item.locator('div.prod_img').locator('img');
-      const img = (await $img.getAttribute('src')) || '';
-      const imgAlt = await $img.getAttribute('alt', { timeout: 3000 });
-      let barcode = '';
-      if (imgAlt) barcode = imgAlt.split('.')[0];
+        const name = $item.find('.prod_text .name').text().trim();
+        const priceString = $item.find('.prod_text .price').text().trim();
+        const price = Number(priceString.replace(/[,원]/g, ''));
 
-      let details;
-      let itemId;
-      try {
-        const attr = await item.locator('div.prod_img').getAttribute('onclick');
-        if (!attr) throw new Error('상품 아이디 추출 실패');
-        itemId = /\d+/.exec(attr)?.[0];
-        if (!itemId) throw new Error('상품 아이디 추출 실패');
+        const img = $item.find('div.prod_img img').attr('src')?.trim();
+        const imgAlt = $item.find('div.prod_img img').attr('alt')?.trim();
+        const barcode = imgAlt?.split('.')[0];
+        if (!barcode) continue;
 
-        details = await this.crawlItemDetails(itemId);
-      } catch (e) {
-        console.log('상세 확인 에러', itemId);
+        let itemId = $item.find('div.prod_img').attr('onclick')?.trim();
+        if (itemId) itemId = /\d+/.exec(itemId)?.[0];
+
+        const { description, tag } = await this.getDetails(itemId);
+
+        result.push({
+          eventType,
+          category,
+          badge,
+          name,
+          price,
+          isNew: badge === 'NEW',
+          img: img || '',
+          barcode,
+          description,
+          tag,
+        });
       }
 
-      const obj: Prisma.CrawlingCUCreateManyInput = {
-        name,
-        price,
-        img,
-        barcode,
-        eventType,
-        badge,
-        isNew: badge === BadgeType.NEW,
-        category,
-        ...details,
-      };
-
-      arr.push(obj);
+      const $nextBtn = $('.prodListBtn').is('div');
+      if (!$nextBtn) break;
+      else pageIndex++;
     }
 
-    return arr;
+    console.log(`${category} 상품 크롤링 완료, ${result.length}개 상품`);
+    return result;
   }
 
-  private async crawlItemDetails(
-    itemId: string
-  ): Promise<Pick<Prisma.CrawlingCUCreateManyInput, 'description' | 'tag'>> {
-    const context = await this.browser.newContext();
-    const page = await context.newPage();
-    await page.goto(this.detailURL + itemId);
-    await page.waitForLoadState('networkidle');
+  private async getDetails(id?: string) {
+    if (!id) return { description: null, tag: null };
+    const url = `${this.detailURL}${id}`;
+    const response = await axios.get(url);
+    const $ = load(response.data);
+    const description = $('.prodExplain').text().trim();
+    const tag = $('#taglist').children('li').text().split(' ').join('|');
 
-    const description = await page.locator('.prodExplain').innerText();
-    let tag = await page.locator('#taglist').innerText();
-    tag = tag.replace(/\n/g, '|');
-
-    await page.close();
-
-    return {
-      description,
-      tag,
-    };
+    return { description, tag };
   }
 }
