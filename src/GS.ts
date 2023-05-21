@@ -1,203 +1,195 @@
-import { chromium, Page } from '@playwright/test';
 import { Crawlable } from './crawlable';
-import { Prisma } from '@prisma/client';
+import { chromium } from '@playwright/test';
+import axios from 'axios';
 
-export class GS extends Crawlable<Prisma.CrawlingGSCreateManyInput> {
+interface GSResponse {
+  results: EventGoods[];
+  SubPageListData: EventGoods[];
+  pagination: {
+    totalNumberOfResults: number;
+    numberOfPages: number;
+    pageSize: number;
+    currentPage: number;
+  };
+}
+
+interface EventGoods {
+  eventTypeNm: '덤증정' | '2+1' | '1+1'; // 이벤트 타입
+  goodsNm: string; // 상품명
+  giftAttFileNm?: string; // 덤증정 상품 이미지 / 바코드처리
+  price: number;
+  giftGoodsNm?: string; // 덤증정 상품명
+  giftPrice?: number;
+  attFileNm: string; // 상품 이미지 / 바코드 처리
+  isNew?: string; // 신선식품과 PB 상품의 신상품 여부
+}
+
+interface GSGoods {
+  barcode: string;
+  name: string;
+  price: number;
+  img: string;
+  eventType: string;
+  isNew: boolean;
+
+  giftName?: string;
+  giftPrice?: number;
+  giftImg?: string;
+  giftBarcode?: string;
+  createdAt?: Date;
+}
+
+export class GS extends Crawlable<GSGoods> {
+  private token: string;
+
   // 이벤트 상품
   private readonly eventGoodsURL =
     'http://gs25.gsretail.com/gscvs/ko/products/event-goods';
 
-  // 신선식품
-  private readonly freshFoodURL =
-    'http://gs25.gsretail.com/gscvs/ko/products/youus-freshfood';
-
-  // PB 상품
-  private readonly pbURL =
-    'http://gs25.gsretail.com/gscvs/ko/products/youus-different-service';
-
-  constructor() {
-    super();
+  private async init() {
+    this.browser = await chromium.launch({ headless: true });
+    this.token = await this.getCSRFToken();
+    await this.browser.close();
   }
 
-  async init() {
-    this.browser = await chromium.launch({ headless: true });
+  private async getCSRFToken() {
+    const context = await this.browser.newContext();
+    const page = await context.newPage();
+    await page.goto(this.eventGoodsURL);
+    await page.waitForLoadState('networkidle');
+    return await page.locator('form#CSRFForm').locator('input').inputValue();
   }
 
   async run() {
     await this.init();
-    const freshFood = await this.crawlFreshFood('신선식품');
-    const PBs = await this.crawlPB('PB상품');
-    const eventGoods = await this.crawlEventGoods('이벤트상품');
-    await this.browser.close();
+    const result: GSGoods[] = [];
 
-    return [...eventGoods, ...freshFood, ...PBs];
+    const event = await this.scrapeEventGoods();
+    result.push(...event);
+    const freshFood = await this.scrapeFreshFoods();
+    result.push(...freshFood);
+    const pb = await this.scrapePBs();
+    result.push(...pb);
+
+    return result;
   }
 
-  private async getLastPageIndex(page: Page) {
-    const paginations = await page.locator('.paging').all();
-    const pagination = await paginations.at(-1)?.locator('.next2');
-    if (!pagination) return 1;
-    const onclickAttribute = await pagination.getAttribute('onclick');
-    const lastPageIndex = onclickAttribute?.replace(/\D/g, '');
-    return Number(lastPageIndex) || 1;
-  }
+  private async scrapeEventGoods() {
+    const requestURL =
+      'http://gs25.gsretail.com/gscvs/ko/products/event-goods-search';
+    const GSGoods: GSGoods[] = [];
 
-  private async crawlEventGoods(category: string) {
-    const context = await this.browser.newContext();
-    const page = await context.newPage();
-
-    await page.goto(this.eventGoodsURL);
-    await page.waitForLoadState('domcontentloaded');
-
-    const showAllEventGoodsButton = await page.locator('#TOTAL');
-    await showAllEventGoodsButton.click();
-    await page.waitForTimeout(3000);
-
-    console.log('이벤트 상품 크롤링 시작');
-    const arr = await this.crawling(page, category);
-    console.log('이벤트 상품 크롤링 종료');
-    await context.close();
-    return arr;
-  }
-
-  private async crawlFreshFood(category: string) {
-    const context = await this.browser.newContext();
-    const page = await context.newPage();
-
-    await page.goto(this.freshFoodURL);
-    await page.waitForLoadState('networkidle');
-
-    console.log('신선식품 크롤링 시작');
-    const arr = await this.crawling(page, category);
-    console.log('신선식품 크롤링 종료');
-    await context.close();
-    return arr;
-  }
-
-  private async crawlPB(category: string) {
-    const context = await this.browser.newContext();
-    const page = await context.newPage();
-
-    await page.goto(this.pbURL);
-    await page.waitForLoadState('networkidle');
-
-    console.log('PB 상품 크롤링 시작');
-    const arr = await this.crawling(page, category);
-    console.log('PB 상품 크롤링 종료');
-    await context.close();
-    return arr;
-  }
-
-  private async crawling(page: Page, category: string) {
-    const lastPageIndex = await this.getLastPageIndex(page);
-
-    let arr: Prisma.CrawlingGSCreateManyInput[] = [];
-    for (let i = 0; i < lastPageIndex; i++) {
-      console.log(`현재 진행중인 페이지: ${i + 1}`);
-      arr = arr.concat(await this.crawlItems(page, category));
-
-      const nextBtns = await page.locator('a.next').all();
-      const nextBtn = nextBtns.at(-1);
-      if (!nextBtn) break;
-      const attribute = await nextBtn.getAttribute('onclick');
-      if (!attribute) break;
-      await nextBtn.click();
-      await page.waitForLoadState('load');
-      await page.waitForFunction(
-        () => document.querySelector('.blockUI.blockMsg.blockPage') === null
+    let pageNum = 1;
+    while (true) {
+      console.log(`이벤트 상품 ${pageNum}페이지 크롤링 중`);
+      const resp = await axios.get(
+        `${requestURL}?CSRFTOKEN=${this.token}&pageNum=${pageNum}&pageSize=100&searchType=&searchWord=&parameterList=TOTAL`
       );
-    }
 
-    return arr;
+      const { results } = JSON.parse(resp.data) as GSResponse;
+      if (results.length === 0) break;
+
+      results.forEach((item) => {
+        const barcode =
+          /GD_(?<barcode>\d+)/.exec(item.attFileNm)?.groups?.barcode || '';
+        const goods: GSGoods = {
+          name: item.goodsNm,
+          price: item.price,
+          img: item.attFileNm,
+          eventType: item.eventTypeNm,
+          isNew: false,
+          barcode,
+        };
+
+        if (item.eventTypeNm === '덤증정') {
+          goods.giftName = item.giftGoodsNm;
+          goods.giftPrice = item.giftPrice;
+          goods.giftImg = item.giftAttFileNm;
+          goods.giftBarcode =
+            /GD_(?<barcode>\d+)/.exec(item.giftAttFileNm!)?.groups?.barcode ||
+            '';
+        }
+
+        GSGoods.push(goods);
+      });
+
+      pageNum++;
+    }
+    console.log(`이벤트 상품 크롤링 완료, ${GSGoods.length}개 상품`);
+    return GSGoods;
   }
 
-  private async crawlItems(page: Page, category: string) {
-    const list = await page.locator('.prod_list').all();
-    const items = await list.at(-1)?.locator('li').all();
-    const arr: Prisma.CrawlingGSCreateManyInput[] = [];
-    if (!items) return arr;
+  private async scrapeFreshFoods() {
+    const requestURL =
+      'http://gs25.gsretail.com/products/youus-freshfoodDetail-search';
+    const GSGoods: GSGoods[] = [];
 
-    for (const item of await items) {
-      const name = await item.locator('p.tit').first().innerText();
-      let priceString = await item
-        .locator('p.price')
-        .first()
-        .locator('.cost')
-        .innerText();
-      priceString = priceString.replace(/[,원]/g, '');
-      const price = Number(priceString);
-      const img =
-        (await item
-          .locator('p.img')
-          .first()
-          .locator('img')
-          .getAttribute('src')) || '';
-      let barcode = '';
-      if (img) barcode = /GD_(?<barcode>\d+)/.exec(img)?.groups?.barcode || '';
+    let pageNum = 1;
+    while (true) {
+      console.log(`신선식품 ${pageNum}페이지 크롤링 중`);
+      const resp = await axios.get(
+        `${requestURL}?CSRFTOKEN=${this.token}&pageNum=${pageNum}&pageSize=100&searchWord=&searchHPrice=&searchTPrice=&searchSrvFoodCK=FreshFoodKey&searchSort=searchALLSort&searchProduct=productALL`
+      );
 
-      const eventType = await item.locator('.flag_box p > span').innerText();
-      let giftObject: Pick<
-        Prisma.CrawlingGSCreateManyInput,
-        'giftName' | 'giftPrice' | 'giftImg' | 'giftBarcode'
-      > = {
-        giftName: null,
-        giftPrice: null,
-        giftImg: null,
-        giftBarcode: null,
-      };
+      const { SubPageListData: results } = JSON.parse(resp.data) as GSResponse;
+      if (results.length === 0) break;
 
-      const isNew = eventType.toUpperCase() === 'NEW';
+      results.forEach((item) => {
+        const barcode =
+          /GD_(?<barcode>\d+)/.exec(item.attFileNm)?.groups?.barcode || '';
+        const goods: GSGoods = {
+          name: item.goodsNm,
+          price: item.price,
+          img: item.attFileNm,
+          eventType: item.eventTypeNm,
+          isNew: item.isNew === 'T',
+          barcode,
+        };
 
-      if (eventType === '덤증정') {
-        const gift = await item.locator('.dum_box');
-        const giftAll = await gift.all();
-        const hasGift = giftAll.length > 0;
+        GSGoods.push(goods);
+      });
 
-        if (hasGift) {
-          const giftName = await gift.locator('p.name').innerText();
-
-          let giftPriceString = await gift.locator('p.price').innerText();
-          giftPriceString = giftPriceString.replace(/[,원]/g, '');
-          const giftPrice = Number(giftPriceString);
-
-          let giftImg: string | null = '';
-          try {
-            giftImg = await gift.locator('p.img img').getAttribute('src', {
-              timeout: 3000,
-            });
-          } catch (e) {
-            console.error(e);
-            console.log(`${name} 에러발생`);
-          }
-
-          let giftBarcode = '';
-          if (giftImg)
-            giftBarcode =
-              /GD_(?<barcode>\d+)/.exec(giftImg)?.groups?.barcode || '';
-
-          giftObject = {
-            giftName,
-            giftPrice,
-            giftImg,
-            giftBarcode,
-          };
-        }
-      }
-
-      const payload: Prisma.CrawlingGSCreateManyInput = {
-        name,
-        price,
-        img,
-        barcode,
-        eventType,
-        isNew,
-        category,
-        ...giftObject,
-      };
-
-      arr.push(payload);
+      pageNum++;
     }
 
-    return arr;
+    console.log(`신선식품 크롤링 완료, ${GSGoods.length}개 상품`);
+    return GSGoods;
+  }
+
+  private async scrapePBs() {
+    const requestURL =
+      'http://gs25.gsretail.com/products/youus-freshfoodDetail-search';
+    const GSGoods: GSGoods[] = [];
+
+    let pageNum = 1;
+    while (true) {
+      console.log(`PB상품 ${pageNum}페이지 크롤링 중`);
+      const resp = await axios.get(
+        `${requestURL}?CSRFTOKEN=${this.token}&pageNum=${pageNum}&pageSize=100&searchWord=&searchHPrice=&searchTPrice=&searchSrvFoodCK=DifferentServiceKey&searchSort=searchALLSort&searchProduct=productALL`
+      );
+
+      const { SubPageListData: results } = JSON.parse(resp.data) as GSResponse;
+      if (results.length === 0) break;
+
+      results.forEach((item) => {
+        const barcode =
+          /GD_(?<barcode>\d+)/.exec(item.attFileNm)?.groups?.barcode || '';
+        const goods: GSGoods = {
+          name: item.goodsNm,
+          price: item.price,
+          img: item.attFileNm,
+          eventType: item.eventTypeNm,
+          isNew: item.isNew === 'T',
+          barcode,
+        };
+
+        GSGoods.push(goods);
+      });
+
+      pageNum++;
+    }
+
+    console.log(`PB상품 크롤링 완료, ${GSGoods.length}개 상품`);
+    return GSGoods;
   }
 }
