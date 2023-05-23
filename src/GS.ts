@@ -61,7 +61,7 @@ export class GS extends Crawlable<GSGoods> {
   }
 
   async run() {
-    await this.init();
+    // await this.init();
     const result: GSGoods[] = [];
 
     const event = await this.scrapeEventGoods();
