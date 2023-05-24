@@ -18,7 +18,6 @@ const main = async () => {
   const program = new Command();
   program
     .description('편의점 크롤링 스크립트')
-    .option('-t', '테스트')
     .option('-g, --gs', 'GS 이벤트 상품 크롤링')
     .option('-c, --cu', 'CU 이벤트 상품 크롤링')
     .option('-s, --seven', '세븐일레븐 이벤트 상품 크롤링');
