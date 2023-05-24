@@ -10,16 +10,17 @@
   "author": "nunch.dev",
   "license": "MIT",
   "devDependencies": {
-    "@playwright/test": "^1.32.2",
     "@types/node": "^18.15.11",
     "prettier": "^2.8.7",
+    "rimraf": "^5.0.1",
+    "ts-node": "^10.9.1",
     "typescript": "^5.0.3"
   },
   "dependencies": {
     "axios": "^1.4.0",
     "cheerio": "^1.0.0-rc.12",
     "commander": "^10.0.0",
-    "mysql2": "^3.3.2",
-    "ts-node": "^10.9.1"
+    "dotenv": "^16.0.3",
+    "mysql2": "^3.3.2"
   }
 }

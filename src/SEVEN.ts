@@ -3,7 +3,7 @@ import axios from 'axios';
 import { load } from 'cheerio';
 import * as fs from 'fs';
 
-interface SevenGoods {
+export interface SevenGoods {
   barcode: string | null;
   name: string;
   price: number;
@@ -165,12 +165,9 @@ export class SEVEN extends Crawlable<SevenGoods> {
         if (page > 2) {
           params.intCurrPage = page;
         }
-        const moreResp = await axios.get(
-          'https://www.7-eleven.co.kr/product/listMoreAjax.asp',
-          {
-            params,
-          }
-        );
+        const moreResp = await axios.get(this.AJAX_CALL_URL, {
+          params,
+        });
 
         const data = await this.secondScraping(moreResp);
         const [items, isGoAhead] = data;
@@ -299,12 +296,9 @@ export class SEVEN extends Crawlable<SevenGoods> {
         if (page > 2) {
           params.intCurrPage = page;
         }
-        const moreResp = await axios.get(
-          'https://www.7-eleven.co.kr/product/listMoreAjax.asp',
-          {
-            params,
-          }
-        );
+        const moreResp = await axios.get(this.AJAX_CALL_URL, {
+          params,
+        });
 
         const data = await this.secondScrapingGift(moreResp);
         const [items, isGoAhead] = data;

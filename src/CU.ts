@@ -2,7 +2,7 @@ import { Crawlable } from './crawlable';
 import axios from 'axios';
 import { load } from 'cheerio';
 
-interface CUGoods {
+export interface CUGoods {
   barcode: string;
   name: string;
   price: number;
@@ -11,8 +11,8 @@ interface CUGoods {
   isNew: boolean;
   badge: string;
   category: string;
-  description: string | null;
-  tag: string | null;
+  description?: string | null;
+  tag?: string | null;
   createdAt?: Date;
 }
 
@@ -93,7 +93,7 @@ export class CU extends Crawlable<CUGoods> {
         let itemId = $item.find('div.prod_img').attr('onclick')?.trim();
         if (itemId) itemId = /\d+/.exec(itemId)?.[0];
 
-        const { description, tag } = await this.getDetails(itemId);
+        // const { description, tag } = await this.getDetails(itemId);
 
         result.push({
           eventType,
@@ -104,8 +104,8 @@ export class CU extends Crawlable<CUGoods> {
           isNew: badge === 'NEW',
           img: img || '',
           barcode,
-          description,
-          tag,
+          // description,
+          // tag,
         });
       }
 

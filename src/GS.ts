@@ -1,5 +1,4 @@
 import { Crawlable } from './crawlable';
-import { chromium } from '@playwright/test';
 import axios from 'axios';
 
 interface GSResponse {
@@ -24,7 +23,7 @@ interface EventGoods {
   isNew?: string; // 신선식품과 PB 상품의 신상품 여부
 }
 
-interface GSGoods {
+export interface GSGoods {
   barcode: string;
   name: string;
   price: number;
@@ -46,22 +45,8 @@ export class GS extends Crawlable<GSGoods> {
   private readonly eventGoodsURL =
     'http://gs25.gsretail.com/gscvs/ko/products/event-goods';
 
-  private async init() {
-    this.browser = await chromium.launch({ headless: true });
-    this.token = await this.getCSRFToken();
-    await this.browser.close();
-  }
-
-  private async getCSRFToken() {
-    const context = await this.browser.newContext();
-    const page = await context.newPage();
-    await page.goto(this.eventGoodsURL);
-    await page.waitForLoadState('networkidle');
-    return await page.locator('form#CSRFForm').locator('input').inputValue();
-  }
-
   async run() {
-    // await this.init();
+    // await this.init(); // 없어도 데이터를 다 가져오긴 하네?
     const result: GSGoods[] = [];
 
     const event = await this.scrapeEventGoods();
