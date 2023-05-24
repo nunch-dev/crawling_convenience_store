@@ -1,11 +1,11 @@
-import { Connection, createConnection, OkPacket } from 'mysql2/promise';
+import { createPool, OkPacket, Pool } from 'mysql2/promise';
 import 'dotenv/config';
 import { GSGoods } from './GS';
 import { CUGoods } from './CU';
 import { SevenGoods } from './SEVEN';
 
 export class Database {
-  private connection: Connection;
+  private pool: Pool;
 
   constructor() {
     this.init();
@@ -13,12 +13,13 @@ export class Database {
 
   private async init() {
     try {
-      this.connection = await createConnection({
+      this.pool = await createPool({
         host: process.env.DB_HOST || 'localhost',
         port: Number(process.env.DB_PORT) || 3306,
         user: process.env.DB_USER || 'root',
         password: process.env.DB_PASSWORD || '1234',
         database: process.env.DB_NAME || 'db',
+        enableKeepAlive: true,
       });
     } catch {
       console.error('DB 연결 실패');
@@ -27,7 +28,7 @@ export class Database {
   }
 
   async close() {
-    await this.connection.end();
+    await this.pool.end();
   }
 
   async insert<T>(target: 'CU' | 'GS' | 'SEVEN', data: T[]) {
@@ -53,18 +54,21 @@ export class Database {
   }
 
   private async execute(sql: string, values: any[]) {
+    const connection = await this.pool.getConnection();
+
     let result = 0;
     try {
-      await this.connection.beginTransaction();
-      const [rows] = await this.connection.query(sql, [values]);
+      await connection.beginTransaction();
+      const [rows] = await connection.query(sql, [values]);
       result = (rows as OkPacket).affectedRows;
-      await this.connection.commit();
+      await connection.commit();
     } catch (e) {
       console.error(e);
-      await this.connection.rollback();
+      await connection.rollback();
       console.log('Transaction rolled back.');
     } finally {
-      await this.connection.end();
+      console.log('Transaction finished.');
+      connection.release();
     }
 
     return result;
