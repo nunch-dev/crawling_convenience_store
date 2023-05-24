@@ -1,3 +1,4 @@
+#! /usr/bin/env node
 import { Command } from 'commander';
 import { isEmptyObject } from './src/util';
 import { Crawler } from './src/crawler';

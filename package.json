@@ -3,6 +3,9 @@
   "version": "0.0.2",
   "description": "편의점 크롤러",
   "main": "lib/index.js",
+  "bin": {
+    "cs-crawling": "lib/index.js"
+  },
   "scripts": {
     "start": "ts-node index.ts",
     "build": "rimraf lib && tsc"
